@@ -110,6 +110,13 @@ public class CopyMapper extends Mapper<Text, CopyListingFileStatus, Text, Text> 
     Path targetFinalPath = new Path(conf.get(
             DistCpConstants.CONF_LABEL_TARGET_FINAL_PATH));
     targetFS = targetFinalPath.getFileSystem(conf);
+    
+    //for "hadoop distcp /aa s3a://aaa" error
+    int length = targetWorkPath.toString().length() - 1;
+    if (targetFS.isDirectory(targetWorkPath) && targetWorkPath.toString().charAt(length) != '/') {
+    	targetWorkPath = new Path(targetWorkPath.toString() + "/");
+	conf.set(DistCpConstants.CONF_LABEL_TARGET_WORK_PATH, targetWorkPath.toString());
+    }
 
     if (targetFS.exists(targetFinalPath) && targetFS.isFile(targetFinalPath)) {
       overWrite = true; // When target is an existing file, overwrite it.
