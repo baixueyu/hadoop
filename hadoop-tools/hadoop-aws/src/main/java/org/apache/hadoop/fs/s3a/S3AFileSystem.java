@@ -153,8 +153,9 @@ public class S3AFileSystem extends FileSystem {
     super.initialize(name, conf);
 
     uri = URI.create(name.getScheme() + "://" + name.getAuthority());
-    workingDir = new Path("/user", System.getProperty("user.name")).makeQualified(this.uri,
-        this.getWorkingDirectory());
+    //workingDir = new Path("/user", System.getProperty("user.name")).makeQualified(this.uri,
+    //    this.getWorkingDirectory());
+    workingDir = new Path("/");
 
     // Try to get our credentials or just connect anonymously
     String accessKey = conf.get(ACCESS_KEY, null);
