@@ -981,6 +981,9 @@ public class S3AFileSystem extends FileSystem {
         return new S3AFileStatus(true, false,
             f.makeQualified(uri, workingDir));
       }
+	  else if (key.isEmpty()) {
+    	  return new S3AFileStatus(true, true, f.makeQualified(uri, workingDir));
+      }
     } catch (AmazonServiceException e) {
       if (e.getStatusCode() != 404) {
         printAmazonServiceException(e);
