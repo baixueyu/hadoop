@@ -53,7 +53,7 @@ import com.google.common.annotations.VisibleForTesting;
 public class RetriableFileCopyCommand extends RetriableCommand {
 
   private static Log LOG = LogFactory.getLog(RetriableFileCopyCommand.class);
-  private static int BUFFER_SIZE = 8 * 1024;
+  private static int BUFFER_SIZE = 4 * 1024 * 1024;
   private boolean skipCrc = false;
   private FileAction action;
 
