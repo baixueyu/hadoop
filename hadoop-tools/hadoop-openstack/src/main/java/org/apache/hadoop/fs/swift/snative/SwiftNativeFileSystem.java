@@ -116,8 +116,9 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
     this.uri = fsuri;
     String username = System.getProperty("user.name");
-    this.workingDir = new Path("/user", username)
-      .makeQualified(uri, new Path(username));
+    //this.workingDir = new Path("/user", username)
+    //  .makeQualified(uri, new Path(username));
+    this.workingDir = new Path("/");
     if (LOG.isDebugEnabled()) {
       LOG.debug("Initializing SwiftNativeFileSystem against URI " + uri
               + " and working dir " + workingDir);
@@ -331,6 +332,9 @@ public class SwiftNativeFileSystem extends FileSystem {
       if (isNotRoot(p)) {
         //perform a mkdir operation without any polling of
         //the far end first
+    	//if (p.toString().charAt(p.toString().length() - 1) != '/') {
+    	//	p = new Path(p.toString() + "/"); 
+    	//}
         forceMkdir(p);
       }
     }

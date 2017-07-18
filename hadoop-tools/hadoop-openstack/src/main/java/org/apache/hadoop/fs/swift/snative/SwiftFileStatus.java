@@ -72,7 +72,7 @@ public class SwiftFileStatus extends FileStatus {
    */
   @Override
   public boolean isDir() {
-    return super.isDirectory() || getLen() == 0;
+    return super.isDirectory();// || getLen() == 0;
   }
 
   /**

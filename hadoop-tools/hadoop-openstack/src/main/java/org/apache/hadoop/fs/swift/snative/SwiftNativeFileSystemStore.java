@@ -208,17 +208,21 @@ public class SwiftNativeFileSystemStore {
    */
   public SwiftFileStatus getObjectMetadata(Path path, boolean newest)
     throws IOException, FileNotFoundException {
-
+	boolean isDir = false;
+	long length = 0;
+	long lastModified = 0 ;
     SwiftObjectPath objectPath = toObjectPath(path);
-    final Header[] headers = stat(objectPath, newest);
-    //no headers is treated as a missing file
-    if (headers.length == 0) {
-      throw new FileNotFoundException("Not Found " + path.toUri());
+    Header[] headers;
+    try {
+    	headers = stat(objectPath, newest);
+    } catch (FileNotFoundException e){
+      SwiftObjectPath dirPath = toDirPath(path, true);
+      headers = stat(dirPath, newest);
+      if (headers.length == 0) {
+    	  throw new FileNotFoundException("Not Found " + path.toUri());
+      }
+      isDir = true;
     }
-
-    boolean isDir = false;
-    long length = 0;
-    long lastModified = 0 ;
     for (Header header : headers) {
       String headerName = header.getName();
       if (headerName.equals(SwiftProtocolConstants.X_CONTAINER_OBJECT_COUNT) ||
@@ -369,13 +373,30 @@ public class SwiftNativeFileSystemStore {
     }
 
     for (SwiftObjectFileStatus status : fileStatusList) {
-      if (status.getName() != null) {
-          files.add(new SwiftFileStatus(status.getBytes(),
-                  status.getBytes() == 0,
-                  1,
-                  getBlocksize(),
-                  status.getLast_modified().getTime(),
-                  getCorrectSwiftPath(new Path(status.getName()))));
+      if (status.getName() != null || status.getSubdir() != null) {
+    	  String obj = status.getName();
+    	  String obj1 = path.getObject() + "/";
+    	  if (obj != null) {
+    		  if (obj.equals(obj1)) {
+    		     continue;
+    		  }
+    	  }
+    	  boolean is_dir = (status.getSubdir() != null);
+    	  if (is_dir) {
+    		  files.add(new SwiftFileStatus(status.getBytes(),
+                          is_dir,
+                          1,
+                          getBlocksize(),
+                          0,
+                          getCorrectSwiftPath(new Path(status.getSubdir()))));   		 
+    	  } else {
+    		  files.add(new SwiftFileStatus(status.getBytes(),
+                      is_dir,
+                      1,
+                      getBlocksize(),
+                      status.getLast_modified().getTime(),
+                      getCorrectSwiftPath(new Path(status.getName()))));
+    	  }        
       }
     }
 
@@ -409,7 +430,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException
    */
   public void createDirectory(Path path) throws IOException {
-    innerCreateDirectory(toDirPath(path));
+    innerCreateDirectory(toDirPath(path, true));
   }
 
   /**
@@ -424,7 +445,12 @@ public class SwiftNativeFileSystemStore {
 
     swiftRestClient.putRequest(swiftObjectPath);
   }
-
+ 
+  private SwiftObjectPath toDirPath(Path path, boolean tail) throws
+  SwiftConfigurationException {
+	  return SwiftObjectPath.fromPath(uri, path, tail);
+}
+  
   private SwiftObjectPath toDirPath(Path path) throws
           SwiftConfigurationException {
     return SwiftObjectPath.fromPath(uri, path, false);
@@ -470,6 +496,17 @@ public class SwiftNativeFileSystemStore {
     }
   }
 
+  public boolean deletePath(Path path) throws IOException {
+	SwiftObjectPath swiftObjectPath = toDirPath(path, true);
+	if (!SwiftUtils.isRootDir(swiftObjectPath)) {
+	  return swiftRestClient.delete(swiftObjectPath);
+	} else {
+	  if (LOG.isDebugEnabled()) {
+	    LOG.debug("Not deleting root directory entry");
+	  }
+	  return true;
+	}
+  }
   /**
    * deletes a directory from Swift. This is not recursive
    *
@@ -479,7 +516,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException on a failure
    */
   public boolean rmdir(Path path) throws IOException {
-    return deleteObject(path);
+    return deletePath(path);
   }
 
   /**
@@ -694,6 +731,8 @@ public class SwiftNativeFileSystemStore {
       //now rename self. If missing, create the dest directory and warn
       if (!SwiftUtils.isRootDir(srcObject)) {
         try {
+          srcObject = toDirPath(src, true);
+          targetObjectPath = toDirPath(dst, true);
           copyThenDeleteObject(srcObject,
                   targetObjectPath);
         } catch (FileNotFoundException e) {
