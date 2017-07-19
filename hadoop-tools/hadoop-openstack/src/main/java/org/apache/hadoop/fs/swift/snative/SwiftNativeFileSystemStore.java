@@ -217,9 +217,31 @@ public class SwiftNativeFileSystemStore {
     	headers = stat(objectPath, newest);
     } catch (FileNotFoundException e){
       SwiftObjectPath dirPath = toDirPath(path, true);
-      headers = stat(dirPath, newest);
-      if (headers.length == 0) {
-    	  throw new FileNotFoundException("Not Found " + path.toUri());
+      try {
+    	  headers = stat(dirPath, newest);
+      } catch (FileNotFoundException f) {
+    	  byte[] bytes;
+    	  try {
+			bytes = swiftRestClient.listDeepObjectsInDirectory(dirPath, false);
+    	  } catch (FileNotFoundException g) {
+    		  throw new FileNotFoundException("Not Found " + path.toUri());
+    	  }
+    	  final CollectionType collectionType = JSONUtil.getJsonMapper().getTypeFactory().
+    	            constructCollectionType(List.class, SwiftObjectFileStatus.class);
+
+    	  final List<SwiftObjectFileStatus> fileStatusList = JSONUtil.toObject(
+    	      new String(bytes, Charset.forName("UTF-8")), collectionType);
+    	  if (fileStatusList.isEmpty()) {
+    		  throw new FileNotFoundException("Not Found " + path.toUri());
+    	  }
+    	  isDir = true;
+    	  Path correctSwiftPath = getCorrectSwiftPath(path);
+    	  return new SwiftFileStatus(length,
+                    isDir,
+                    1,
+                    getBlocksize(),
+                    lastModified,
+                    correctSwiftPath);
       }
       isDir = true;
     }
@@ -381,14 +403,15 @@ public class SwiftNativeFileSystemStore {
     		     continue;
     		  }
     	  }
-    	  boolean is_dir = (status.getSubdir() != null);
+    	  boolean is_dir = (status.getSubdir() != null || obj.charAt(obj.length() - 1) == '/');
     	  if (is_dir) {
+    		  String path1 = (status.getSubdir() != null ? status.getSubdir().toString(): status.getName());
     		  files.add(new SwiftFileStatus(status.getBytes(),
                           is_dir,
                           1,
                           getBlocksize(),
                           0,
-                          getCorrectSwiftPath(new Path(status.getSubdir()))));   		 
+                          getCorrectSwiftPath(new Path(path1))));   		 
     	  } else {
     		  files.add(new SwiftFileStatus(status.getBytes(),
                       is_dir,
@@ -683,7 +706,7 @@ public class SwiftNativeFileSystemStore {
         // #3 destination doesn't exist: create a new dir with that name
         targetPath = dst;
       }
-      SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
+      SwiftObjectPath targetObjectPath = toDirPath(targetPath, true);
       //final check for any recursive operations
       if (srcObject.isEqualToOrParentOf(targetObjectPath)) {
         //you can't rename a directory onto itself
@@ -717,10 +740,18 @@ public class SwiftNativeFileSystemStore {
                   + "; copyDestSubPath=" + copyDestSubPath
                   + "; copyDestPath=" + copyDestPath);
         }
-        SwiftObjectPath copyDestination = toObjectPath(copyDestPath);
+        SwiftObjectPath copyDestination;
+        SwiftObjectPath copySource;
+        if (fileStatus.isDirectory()) {
+          copyDestination = toDirPath(copyDestPath, true);	
+          copySource = toDirPath(copySourcePath, true);
+        } else {
+          copyDestination = toObjectPath(copyDestPath);	
+          copySource = toObjectPath(copySourcePath);
+        }
 
         try {
-          copyThenDeleteObject(toObjectPath(copySourcePath),
+          copyThenDeleteObject(copySource,
                   copyDestination);
         } catch (FileNotFoundException e) {
           LOG.info("Skipping rename of " + copySourcePath);
@@ -996,7 +1027,12 @@ public class SwiftNativeFileSystemStore {
     for (FileStatus entryStatus : statuses) {
       Path entryPath = entryStatus.getPath();
       try {
-        boolean deleted = deleteObject(entryPath);
+        boolean deleted;
+        if (entryStatus.isDirectory()) {
+          deleted = deletePath(entryPath);
+        } else {
+          deleted = deleteObject(entryPath);
+        }       
         if (!deleted) {
           SwiftUtils.debug(LOG, "Failed to delete entry '%s'; continuing",
                            entryPath);
