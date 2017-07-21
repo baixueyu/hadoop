@@ -870,6 +870,7 @@ public class S3AFileSystem extends FileSystem {
 
       String key = pathToKey(f);
       createFakeDirectory(bucket, key);
+      finishedWrite(key);
       return true;
     }
   }
