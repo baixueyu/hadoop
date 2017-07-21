@@ -725,6 +725,7 @@ public class SwiftNativeFileSystemStore {
         }
 
         swiftRestClient.delete(srcObject);
+        deleteUnnecessaryFakeDir(dstParent);
       }
     } else {
 
@@ -804,17 +805,23 @@ public class SwiftNativeFileSystemStore {
       }
       //now rename self. If missing, create the dest directory and warn
       if (!SwiftUtils.isRootDir(srcObject)) {
-        try {
           srcObject = toDirPath(src, true);
           targetObjectPath = toDirPath(dst, true);
-          copyThenDeleteObject(srcObject,
-                  targetObjectPath);
-        } catch (FileNotFoundException e) {
-          //create the destination directory
-          LOG.warn("Source directory deleted during rename", e);
-          innerCreateDirectory(destObject);
-        }
-      }
+          try {
+        	  getDirStatus(dst, true);
+          } catch (FileNotFoundException f) {
+        	  try {      	    
+        	    copyThenDeleteObject(srcObject,
+        			   targetObjectPath);
+        	    Path dstParent1 = dst.getParent();
+        	    deleteUnnecessaryFakeDir(dstParent1);
+        	  } catch (FileNotFoundException g) {
+        		  //create the destination directory
+                  LOG.warn("Source directory deleted during rename", g);
+                  innerCreateDirectory(destObject);
+        	  }
+          }
+       }
     }
   }
 
