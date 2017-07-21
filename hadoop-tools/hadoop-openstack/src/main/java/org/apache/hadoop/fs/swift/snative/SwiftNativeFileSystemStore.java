@@ -197,6 +197,49 @@ public class SwiftNativeFileSystemStore {
     return stat(objectPath, newest);
   }
 
+  public SwiftDirStatus getDirStatus(Path path, boolean newest)
+		    throws IOException, FileNotFoundException {
+	boolean isDir = false;
+	boolean isEmpty = false;
+	long length = 0;
+	long lastModified = 0 ;
+	SwiftObjectPath objectPath = toObjectPath(path);
+	Header[] headers;
+	try {
+	  headers = stat(objectPath, newest);
+	  } catch (FileNotFoundException e){
+		  SwiftObjectPath dirPath = toDirPath(path, true);
+		  try {
+		    headers = stat(dirPath, newest);
+		  } catch (FileNotFoundException f) {
+		    byte[] bytes;
+		    try {
+			  bytes = swiftRestClient.listDeepObjectsInDirectory(dirPath, false);
+			} catch (FileNotFoundException g) {
+		      throw new FileNotFoundException("Not Found " + path.toUri());
+		    }
+		    final CollectionType collectionType = JSONUtil.getJsonMapper().getTypeFactory().
+		    	  constructCollectionType(List.class, SwiftObjectFileStatus.class);
+
+		    final List<SwiftObjectFileStatus> fileStatusList = JSONUtil.toObject(
+		    	  new String(bytes, Charset.forName("UTF-8")), collectionType);
+		    if (fileStatusList.isEmpty()) {
+		    	  throw new FileNotFoundException("Not Found " + path.toUri());
+		    }
+		    isDir = true;
+		    isEmpty = false;
+		    Path correctSwiftPath = getCorrectSwiftPath(path);
+		    return new SwiftDirStatus(isDir, isEmpty);
+		  }
+		  isDir = true;
+		  isEmpty = true;
+		  return new SwiftDirStatus(isDir, isEmpty);
+	  }
+	  isDir = false;
+	  isEmpty = false;
+	  return new SwiftDirStatus(isDir, isEmpty);
+  }
+  
   /**
    * Get the metadata of an object
    *
@@ -941,7 +984,35 @@ public class SwiftNativeFileSystemStore {
     return swiftRestClient.getOperationStatistics();
   }
 
-
+  public int pathNum(String str) {
+      int num=0;  
+      for(int i=0;i<=str.length()-1;i++) {  
+          String getstr=str.substring(i,i+1);  
+          if(getstr.equals("/")){  
+              num++;  
+          }  
+      }
+      return num;
+  }
+  
+  public void deleteUnnecessaryFakeDir(Path f) throws IOException {
+	  while (true) {
+        try {
+          if (f.toString().charAt(f.toString().length() -1 ) == '/') {
+           	 break;
+          }
+		  if (pathNum(f.toString()) == 2) {
+			 break;
+		  }
+		  SwiftDirStatus status = getDirStatus(f, true); 
+		  if (status.isdir && status.isempty) {
+			 rmdir(f);
+		  }
+         } catch (FileNotFoundException e) {        	
+         }
+         f = f.getParent();
+	  }
+  }
   /**
    * Delete the entire tree. This is an internal one with slightly different
    * behavior: if an entry is missing, a {@link FileNotFoundException} is

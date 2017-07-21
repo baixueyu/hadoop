@@ -176,7 +176,6 @@ public class SwiftProtocolConstants {
   /**
    * The default partition size for uploads: {@value}
    */
-   // ceph can not del with multipart 
   public static final int DEFAULT_SWIFT_PARTITION_SIZE = 4608*102400;
 
   /**
