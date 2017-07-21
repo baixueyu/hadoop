@@ -725,8 +725,8 @@ public class SwiftNativeFileSystemStore {
         }
 
         swiftRestClient.delete(srcObject);
-        deleteUnnecessaryFakeDir(dstParent);
       }
+      deleteUnnecessaryFakeDir(dstParent);
     } else {
 
       //here the source exists and is a directory
@@ -797,6 +797,8 @@ public class SwiftNativeFileSystemStore {
         try {
           copyThenDeleteObject(copySource,
                   copyDestination);
+  	      Path dstParent1 = copyDestPath.getParent();
+	      deleteUnnecessaryFakeDir(dstParent1);
         } catch (FileNotFoundException e) {
           LOG.info("Skipping rename of " + copySourcePath);
         }
