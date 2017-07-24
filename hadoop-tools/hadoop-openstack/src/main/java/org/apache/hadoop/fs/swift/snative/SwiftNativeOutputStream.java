@@ -27,9 +27,11 @@ import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftInternalStateException;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
 
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -113,7 +115,7 @@ class SwiftNativeOutputStream extends OutputStream {
       throw new SwiftConnectionClosedException();
     }
   }
-
+  
   /**
    * Close the stream. This will trigger the upload of all locally cached
    * data to the remote blobstore.
@@ -137,13 +139,15 @@ class SwiftNativeOutputStream extends OutputStream {
       } else {
         uploadOnClose(keypath);
       }
-    } finally {
+      Path parentPath = keypath.getParent();
+      nativeStore.deleteUnnecessaryFakeDir(parentPath);
+    } finally {     
       delete(backupFile);
       backupFile = null;
     }
     assert backupStream == null: "backup stream has been reopened";
   }
-
+  
   /**
    * Upload a file when closed, either in one go, or, if the file is
    * already partitioned, by uploading the remaining partition and a manifest.
