@@ -161,8 +161,8 @@ public class SwiftNativeFileSystem extends FileSystem {
       LOG.debug("SwiftFileSystem.setWorkingDirectory to " + dir);
     }
   }
-
-  /**
+  
+   /**
    * Return a file status object that represents the path.
    *
    * @param path The path we want information from
@@ -344,7 +344,7 @@ public class SwiftNativeFileSystem extends FileSystem {
         forceMkdir(p);
       }
     }
-
+    store.deleteUnnecessaryFakeDir(directory);
     //if an exception was not thrown, this operation is considered
     //a success
     return true;
