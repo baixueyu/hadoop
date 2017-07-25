@@ -170,6 +170,12 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   @Override
   public FileStatus getFileStatus(Path path) throws IOException {
+
+    // param check
+    if (path == null) {
+      return null;
+    }
+
     Path absolutePath = makeAbsolute(path);
     return store.getObjectMetadata(absolutePath);
   }

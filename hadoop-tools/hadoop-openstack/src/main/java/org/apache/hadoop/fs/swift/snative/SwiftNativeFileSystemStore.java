@@ -527,7 +527,7 @@ public class SwiftNativeFileSystemStore {
 	  if (LOG.isDebugEnabled()) {
 	    LOG.debug("Not deleting root directory entry");
 	  }
-	  return true;
+	  return false;
 	}
   }
   /**
@@ -994,8 +994,7 @@ public class SwiftNativeFileSystemStore {
 
     if (filecount == 0) {
       //it's an empty directory or a path
-      rmdir(absolutePath);
-      return true;
+      return rmdir(absolutePath);
     }
 
     if (LOG.isDebugEnabled()) {

@@ -1253,37 +1253,38 @@ public final class SwiftRestClient {
       //see if the data is there
       headRequest("createContainer", objectPath, NEWEST);
     } catch (FileNotFoundException ex) {
-      int status = 0;
-      try {
-        status = putRequest(objectPath);
-      } catch (FileNotFoundException e) {
-        //triggered by a very bad container name.
-        //re-insert the 404 result into the status
-        status = SC_NOT_FOUND;
-      }
-      if (status == SC_BAD_REQUEST) {
-        throw new SwiftBadRequestException(
-          "Bad request -authentication failure or bad container name?",
-          status,
-          "PUT",
-          null);
-      }
-      if (!isStatusCodeExpected(status,
-              SC_OK,
-              SC_CREATED,
-              SC_ACCEPTED,
-              SC_NO_CONTENT)) {
-        throw new SwiftInvalidResponseException("Couldn't create container "
-                + containerName +
-                " for storing data in Swift." +
-                " Try to create container " +
-                containerName + " manually ",
-                status,
-                "PUT",
-                null);
-      } else {
-        throw ex;
-      }
+      // int status = 0;
+      // try {
+      //   status = putRequest(objectPath);
+      // } catch (FileNotFoundException e) {
+      //   //triggered by a very bad container name.
+      //   //re-insert the 404 result into the status
+      //   status = SC_NOT_FOUND;
+      // }
+      // if (status == SC_BAD_REQUEST) {
+      //   throw new SwiftBadRequestException(
+      //     "Bad request -authentication failure or bad container name?",
+      //     status,
+      //     "PUT",
+      //     null);
+      // }
+      // if (!isStatusCodeExpected(status,
+      //         SC_OK,
+      //         SC_CREATED,
+      //         SC_ACCEPTED,
+      //         SC_NO_CONTENT)) {
+      //   throw new SwiftInvalidResponseException("Couldn't create container "
+      //           + containerName +
+      //           " for storing data in Swift." +
+      //           " Try to create container " +
+      //           containerName + " manually ",
+      //           status,
+      //           "PUT",
+      //           null);
+      // } else {
+      //   throw ex;
+      // }
+      throw ex;
     }
   }
 
