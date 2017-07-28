@@ -634,64 +634,63 @@ public class S3AFileSystem extends FileSystem {
       if (!key.endsWith("/")) {
         key = key + "/";
       }
-
+      
       if (key.equals("/")) {
         LOG.info("s3a cannot delete the root directory");
         return false;
       }
 
-      if (status.isEmptyDirectory()) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Deleting fake empty directory");
-        }
-        s3.deleteObject(bucket, key);
-        statistics.incrementWriteOps(1);
-      } else {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting objects for directory prefix " + key + " to delete");
-        }
-
-        ListObjectsRequest request = new ListObjectsRequest();
-        request.setBucketName(bucket);
-        request.setPrefix(key);
-        // Hopefully not setting a delimiter will cause this to find everything
-        //request.setDelimiter("/");
-        request.setMaxKeys(maxKeys);
-
-        List<DeleteObjectsRequest.KeyVersion> keys = 
-          new ArrayList<>();
-        ObjectListing objects = s3.listObjects(request);
-        statistics.incrementReadOps(1);
-        while (true) {
-          for (S3ObjectSummary summary : objects.getObjectSummaries()) {
-            keys.add(new DeleteObjectsRequest.KeyVersion(summary.getKey()));
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Got object to delete " + summary.getKey());
-            }
-
-            if (keys.size() == MAX_ENTRIES_TO_DELETE) {
-              DeleteObjectsRequest deleteRequest =
-                  new DeleteObjectsRequest(bucket).withKeys(keys);
-              s3.deleteObjects(deleteRequest);
-              statistics.incrementWriteOps(1);
-              keys.clear();
-            }
-          }
-
-          if (objects.isTruncated()) {
-            objects = s3.listNextBatchOfObjects(objects);
-            statistics.incrementReadOps(1);
-          } else {
-            if (!keys.isEmpty()) {
-              DeleteObjectsRequest deleteRequest =
-                  new DeleteObjectsRequest(bucket).withKeys(keys);
-              s3.deleteObjects(deleteRequest);
-              statistics.incrementWriteOps(1);
-            }
-            break;
-          }
-        }
+      try {
+    	  ObjectMetadata meta = s3.getObjectMetadata(bucket, key);
+    	  statistics.incrementReadOps(1);
+    	  s3.deleteObject(bucket, key);
+          statistics.incrementWriteOps(1);
+      } catch (AmazonServiceException e) {
+    	if (e.getStatusCode() != 404) {
+    	  printAmazonServiceException(e);
+    	  throw e;
+    	}
       }
+      ListObjectsRequest request = new ListObjectsRequest();
+      request.setBucketName(bucket);
+      request.setPrefix(key);
+      // Hopefully not setting a delimiter will cause this to find everything
+      //request.setDelimiter("/");
+      request.setMaxKeys(maxKeys);
+
+      List<DeleteObjectsRequest.KeyVersion> keys = 
+        new ArrayList<>();
+      ObjectListing objects = s3.listObjects(request);
+      statistics.incrementReadOps(1);
+      while (true) {
+        for (S3ObjectSummary summary : objects.getObjectSummaries()) {
+          keys.add(new DeleteObjectsRequest.KeyVersion(summary.getKey()));
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Got object to delete " + summary.getKey());
+          }
+
+          if (keys.size() == MAX_ENTRIES_TO_DELETE) {
+            DeleteObjectsRequest deleteRequest =
+                new DeleteObjectsRequest(bucket).withKeys(keys);
+            s3.deleteObjects(deleteRequest);
+            statistics.incrementWriteOps(1);
+            keys.clear();
+          }
+        }
+
+        if (objects.isTruncated()) {
+          objects = s3.listNextBatchOfObjects(objects);
+          statistics.incrementReadOps(1);
+        } else {
+          if (!keys.isEmpty()) {
+            DeleteObjectsRequest deleteRequest =
+                new DeleteObjectsRequest(bucket).withKeys(keys);
+            s3.deleteObjects(deleteRequest);
+            statistics.incrementWriteOps(1);
+         }
+          break;
+        }
+      }     
     } else {
       if (LOG.isDebugEnabled()) {
         LOG.debug("delete: Path is a file");
