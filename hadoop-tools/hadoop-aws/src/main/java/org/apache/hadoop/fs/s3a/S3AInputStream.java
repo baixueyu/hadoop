@@ -86,7 +86,9 @@ public class S3AInputStream extends FSInputStream {
     LOG.debug("Actually opening file " + key + " at pos " + pos);
 
     GetObjectRequest request = new GetObjectRequest(bucket, key);
-    //request.setRange(pos, contentLength-1);
+    if (contentLength > 0) {
+      request.setRange(pos, contentLength-1);    	
+    }
 
     wrappedStream = client.getObject(request).getObjectContent();
 
