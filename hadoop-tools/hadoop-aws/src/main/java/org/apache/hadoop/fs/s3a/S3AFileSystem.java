@@ -245,6 +245,8 @@ public class S3AFileSystem extends FileSystem {
       }
     }
 
+    enablePathStyleAccessIfRequired(conf);
+
     maxKeys = conf.getInt(MAX_PAGING_KEYS, DEFAULT_MAX_PAGING_KEYS);
     partSize = conf.getLong(MULTIPART_SIZE, DEFAULT_MULTIPART_SIZE);
     multiPartThreshold = conf.getInt(MIN_MULTIPART_THRESHOLD,
@@ -313,6 +315,14 @@ public class S3AFileSystem extends FileSystem {
     serverSideEncryptionAlgorithm = conf.get(SERVER_SIDE_ENCRYPTION_ALGORITHM);
 
     setConf(conf);
+  }
+
+  private void enablePathStyleAccessIfRequired(Configuration conf) {
+    final boolean pathStyleAccess = conf.getBoolean(PATH_STYLE_ACCESS, false);
+      if (pathStyleAccess) {
+        LOG.debug("Enabling path style access!");
+	s3.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(true));
+      }
   }
 
   /**
